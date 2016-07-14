@@ -23,7 +23,7 @@ that displays the top ten articles you would most like to read for the day. I wi
 I don't really like spending 30 minutes a day browsing for and reading news articles that I find insightful 
 or interesting :) Hope it's useful to you. 
 
-Finally and not unsurprisingly, not all companies are okay with you scraping there information from their websites.
+Finally and not unsurprisingly, not all companies are okay with you scraping their information from their websites.
 As such I am NOT responsible for any copyright infringement incurred in using of these programs. I leave it soley to 
 the user of this program do decide if scraping a given site is a violation of copyright. 
 
