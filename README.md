@@ -9,10 +9,7 @@ and in your build.gradle file under dependencies place the following line of cod
 
 After adding the dependencies, the program's main is located in the Test.java file.
 
-You can leverage these classes to your own use by setting the correct tags/css selectors (this will require research 
-on a site's html layout) in the NewsWebsite class as the instance variables (described in the source), you can search the
-articles of any news website for links to major images related to the article, the article title, 
-the article's actual body text, and the link to the actual article on the site. 
+You can leverage these classes to your own use case/news website by assigning the correct tags/css selectors (this will require research on a site's html layout although most of these sites are quite similar) to the instance variables described in the source code of the NewsWebsite class.
 
 This information could be used for data mining purposes or displayed in a news application.
 With a little machine learning and/or string parsing/searching, you could make a program 
