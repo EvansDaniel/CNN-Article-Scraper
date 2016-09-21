@@ -2,10 +2,14 @@
 
 Dependencies:
 jsoup version: 1.9.2
+org.json.* package if not already install with your installation of jdk
 
 To run this program, build a gradle project in your favorite IDE, clone this repository, 
 and in your build.gradle file under dependencies place the following line of code: 
 `compile 'org.jsoup:jsoup:1.9.2'`
+
+For the json package, go to <a href="http://www.java2s.com/Code/JarDownload/java/java-json.jar.zip">this</a> link, 
+unzip the jar, add it to your build path, and you're good to go.
 
 After adding the dependencies, the program's main is located in the Test.java file.
 
