@@ -1,3 +1,5 @@
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -5,9 +7,12 @@ import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by evansdb0 on 5/25/16.
+ * @author Daniel Evans
  */
 public class NewsWebsite {
 
@@ -78,13 +83,21 @@ public class NewsWebsite {
     */
     private ArrayList<Article> articleContainer = new ArrayList<>(500);
 
-    /**
-     * neccessary setters to set up the tags and selections to be made on
-     * the website. These are the things that narrow down the search for
-     * @param domain
-     */
-    public void setDomain(String domain) {
-        this.domain = domain;
+    public NewsWebsite() {
+        domain = "http://cnn.com";
+        articleCategoryContainerSelector = "nav-expanded-menu";
+        mainArticleSelector = "article";
+        bodyParagraphSelector = "zn-body__paragraph";
+        imageContainerAttr = "itemprop";
+        imageContainerVal = "image";
+        articleTitleSelector = "pg-headline";
+        imageSrcAttr = "content";
+        articleValidator = "(CNN)";
+    }
+
+    public NewsWebsite(String domain) {
+
+        this.domain = this.configDomain(domain);
     }
 
     public void setArticleCategoryContainerSelector(String articleCategoryContainerSelector) {
@@ -123,17 +136,6 @@ public class NewsWebsite {
         this.articleTitleSelector = articleTitleSelector;
     }
 
-    public NewsWebsite() {
-        domain = "http://cnn.com";
-        articleCategoryContainerSelector = "nav-expanded-menu";
-        mainArticleSelector = "article";
-        bodyParagraphSelector = "zn-body__paragraph";
-        imageContainerAttr = "itemprop";
-        imageContainerVal = "image";
-        articleTitleSelector = "pg-headline";
-        imageSrcAttr = "content";
-        articleValidator = "(CNN)";
-    }
     private ArrayList<String> getLinksFromArticleCategoryContainer(Element linkContainer) {
         // get the the links in the articleCategoryContainerSelector
         Elements links = linkContainer.children().select("a[href]");
@@ -156,20 +158,20 @@ public class NewsWebsite {
         ArrayList<String> hrefs = getLinksFromArticleCategoryContainer(navExpanded);
 
         // iterate through the articleCatContainerSelector's returned links
-        for (int i = 0; i < hrefs.size(); i++) {
+        for (String href : hrefs) {
             try {
                 // get a parent that contains the link to the article page
                 // the default tag for this is <article>
                 // hrefs.get(i) = link to articleCategory page
-                Elements articles = Jsoup.connect(hrefs.get(i))
-                                                    .get().getElementsByTag(mainArticleSelector);
+                Elements articles = Jsoup.connect(href)
+                        .get().getElementsByTag(mainArticleSelector);
 
                 // iterate through the returned article page links
                 for (Element article : articles) {
                     // get the first link contained in the parent <article> tag
                     Element a = article.getElementsByTag("a").first();
 
-                    String articleLink = null;
+                    String articleLink;
                     try {
                         // get the link from that first <a> tag
                         articleLink = a.attr("href");
@@ -179,40 +181,30 @@ public class NewsWebsite {
                     // store the article page in memory
                     Document doc = Jsoup.connect(this.getDomain() + articleLink).timeout(0).get();
                     // get the body paragraph of the article
-                    String bodyParagraph = fetchArticleFromPage(bodyParagraphSelector,doc);
+                    String bodyParagraph = fetchArticleFromPage(bodyParagraphSelector, doc);
 
                     // if first 25 percent of the bodyParagraph contains articleValidator
-                    if(isValidArticle(this.articleValidator,bodyParagraph,.25)) {
-                        // cnn.com
-                        System.out.println(hrefs.get(i));
-                        // cnn.com + whatever link
-                        System.out.println(this.getDomain() + articleLink);
-                        // link to the image
-                        String imgUrl = fetchArticleImage(imageContainerAttr,imageContainerVal,imageSrcAttr,doc);
-                        System.out.println(imgUrl);
+                    if (isValidArticle(this.articleValidator, bodyParagraph, .25)) {
+
+                        String imgUrl = fetchArticleImage(imageContainerAttr, imageContainerVal, imageSrcAttr, doc);
                         // get Article title
-                        String articleTitle = fetchArticleTitle(doc,articleTitleSelector);
-                        if(articleTitle.length() != 0) {
-                            // article title
-                            System.out.println(articleTitle);
-                            // article's entire body
-                            System.out.println(bodyParagraph);
-                            System.out.println();
+                        String articleTitle = fetchArticleTitle(doc, articleTitleSelector);
+                        if (articleTitle.length() != 0) {
                             Article newsArticle = new Article();
                             newsArticle.setArticleBody(bodyParagraph);
                             newsArticle.setImgUrl(imgUrl);
                             // TODO: This will need to be its own table in the database - the setSourceCategoryLink(String)
-                            newsArticle.setSourceCategoryLink(hrefs.get(i));
+                            newsArticle.setSourceCategoryLink(href);
                             newsArticle.setSourceLink(this.domain + articleLink);
                             newsArticle.setTitle(articleTitle);
                             articleContainer.add(newsArticle);
-                            // thread sleep so you can read the article's
-                            // header and link
-                            Thread.sleep(7500);
+
+                            System.out.println(getArticleAsJSON(articleTitle, bodyParagraph, articleLink, href, imgUrl).toString(3) + "\n");
                         }
                     }
                 }
-            } catch(Exception e) {}
+            } catch (Exception e) {
+            }
         }
         // TODO: method will take forever to return - need to add a method that publishes the current results
         return articleContainer;
@@ -220,10 +212,11 @@ public class NewsWebsite {
     /*
     requires articleTitleSelector to be a class in the html tag
      */
-    public String fetchArticleTitle(Document doc, String articleTitleSelector) {
+    private String fetchArticleTitle(Document doc, String articleTitleSelector) {
         return doc.getElementsByClass(articleTitleSelector).text();
     }
-    public String fetchArticleImage(String imgAttr, String imgAttrVal, String imgSrcIdentifier, Document doc) {
+
+    private String fetchArticleImage(String imgAttr, String imgAttrVal, String imgSrcIdentifier, Document doc) {
         Element image = doc.getElementsByAttributeValue(imgAttr, imgAttrVal).first();
         return image.attr(imgSrcIdentifier);
     }
@@ -231,7 +224,7 @@ public class NewsWebsite {
     @var zeroToOne refers to the percentage of the article the program should look through
      to find the specified articleValidator
      */
-    public boolean isValidArticle(String articleValidator, String p, double zeroToOne) {
+    private boolean isValidArticle(String articleValidator, String p, double zeroToOne) {
         return p.substring(0, (int) Math.floor(zeroToOne * (double) p.length())).contains(articleValidator);
     }
     private String fetchArticleFromPage(String bodyParagraphIdentifier, Document doc) throws IOException {
@@ -248,17 +241,42 @@ public class NewsWebsite {
         return hrefs;
     }
 
-    public NewsWebsite(String domain) {
-
-        this.domain = this.configDomain(domain);
-    }
-
     private String configDomain(String domain) {
         String http = "http://";
         return !domain.substring(0, http.length()).equals(http) ? http + domain : domain;
     }
+
     public String getDomain() {
         return this.domain;
     }
 
+    /**
+     * neccessary setters to set up the tags and selections to be made on
+     * the website. These are the things that narrow down the search for
+     *
+     * @param domain
+     */
+    public void setDomain(String domain) {
+        this.domain = domain;
+    }
+
+    public JSONObject getArticleAsJSON(String title,
+                                       String body,
+                                       String articleUrl,
+                                       String mainUrl,
+                                       String picUrl) {
+        Map<String, String> map = new HashMap<>();
+        map.put("title", title);
+        map.put("body", body);
+        map.put("url", this.domain + articleUrl);
+        map.put("main_url", mainUrl);
+        map.put("pic_url", picUrl);
+        JSONObject object = new JSONObject();
+        try {
+            object.put("article", new JSONObject(map));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return object;
+    }
 }
